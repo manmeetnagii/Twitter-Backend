@@ -1,80 +1,81 @@
-const express = require('express');
-const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const dotenv = require("dotenv");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import bodyParser from "body-parser";
+import mongoose from "mongoose";
+
+import {
+  register,
+  user,
+  loggedInUser,
+  registerSystemInfo,
+  loginInfo,
+  userPost,
+  getPost,
+  userUpdates,
+  pst,
+  verifyPhoneOtp,
+  sendPhoneOtp,
+  sendEmailOtp,
+  verifyEmailOtp,
+  uploadAudio,
+  systeminfo,
+} from "./controllers/controllers.js";
+
+import multer from "multer";
+import { connectCloudinary } from "./cloudniary.js";
+
+dotenv.config();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+const port = process.env.PORT;
+const uri = process.env.MONGO_URI;
 
 const app = express();
+connectCloudinary();
 
-const port = process.env.PORT || 3500;
-
-// config
-dotenv.config();
 app.use(cors());
 app.use(express.json());
+app.use(bodyParser.json());
 
-const uri = `mongodb+srv://manmeetnagiii:iWsKMUArinxPfIzV@twitter-clone.qlymlwh.mongodb.net/?retryWrites=true&w=majority&appName=twitter-clone`;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+app.post("/register", register); //
 
-async function run() {
-    try {
-        await client.connect();
-        const postCollection = client.db("database").collection("posts"); // this collection is for team-ekt
-        const userCollection = client.db("database").collection("users"); // this collection is for team-srv
+app.post("/systemInfo", registerSystemInfo); //
 
-        // get
-        app.get('/user', async (req, res) => {
-            const user = await userCollection.find().toArray();
-            res.send(user);
-        })
-        app.get('/loggedInUser', async (req, res) => {
-            const email = req.query.email;
-            const user = await userCollection.find({ email: email }).toArray();
-            res.send(user);
-        })
-        app.get('/post', async (req, res) => {
-            const post = (await postCollection.find().toArray()).reverse();
-            res.send(post);
-        })
-        app.get('/userPost', async (req, res) => {
-            const email = req.query.email;
-            const post = (await postCollection.find({ email: email }).toArray()).reverse();
-            res.send(post);
-        })
+app.post("/upload-audio", upload.single("file"), uploadAudio);
 
-        // post
-        app.post('/register', async (req, res) => {
-            const user = req.body;
-            const result = await userCollection.insertOne(user);
-            res.send(result);
-        })
+app.get("/info", systeminfo);
 
-        app.post('/post', async (req, res) => {
-            const post = req.body;
-            const result = await postCollection.insertOne(post);
-            res.send(result);
-        })
+app.get("/user", user);
 
-        // patch
-        app.patch('/userUpdates/:email', async (req, res) => {
-            const filter = req.params;
-            const profile = req.body;
-            const options = { upsert: true };
-            const updateDoc = { $set: profile };
-            const result = await userCollection.updateOne(filter, updateDoc, options);
-            res.send(result)
-        })
+app.get("/loggedInUser", loggedInUser); //
+
+app.post("/loginInfo", loginInfo); //
+
+app.get("/userpost", userPost); //
+
+app.get("/post", getPost);
+
+app.post("/post", pst); //
+
+app.patch("/userUpdates", userUpdates);
+
+app.post("/send-phoneOtp", sendPhoneOtp);
+
+app.post("/verify-phoneOtp", verifyPhoneOtp);
+
+app.post("/verify-emailOtp", verifyEmailOtp);
+
+app.post("/send-emailOtp", sendEmailOtp);
 
 
-    } catch (error) {
-        console.log(error);
-    }
-} run().catch(console.dir);
-
-
-app.get('/', (req, res) => {
-    res.send('Hello from Twitter Clone!')
-})
-
-app.listen(port, () => {
-    console.log(`Twitter clone is listening on port ${port}`)
-})
+mongoose
+  .connect(uri)
+  .then(console.log("Database Connected"))
+  .then(
+    app.listen(port || 4000, () => {
+      console.log(`Listening on port ${process.env.PORT}`);
+    })
+  );
